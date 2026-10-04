@@ -1,0 +1,27 @@
+# Generated run artifacts
+runs/*
+!runs/.gitkeep
+
+# Local verified firmware/base images (not redistributed)
+base/*
+!base/.gitkeep
+bootloader_a-stock.img
+bootloader_a-current.img
+
+# Optional locally supplied Android platform tools
+tools/windows/*
+!tools/windows/.gitkeep
+tools/linux/*
+!tools/linux/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
