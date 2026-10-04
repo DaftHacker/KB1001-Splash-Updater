@@ -1,7 +1,5 @@
 # KB1001 Splash Updater
 
-**Release 1.0**
-
 A safety-focused splash-screen updater for the AUMI/KB1001 Allwinner A333 tablet. It prepares one or two normal image files, patches the verified `bootloader_a` FAT16 image, flashes only `bootloader_a`, and verifies the flashed partition afterward.
 
 > **Important:** This utility writes a bootloader partition. Read the safety notes below and keep a known-good stock image outside this repository.
