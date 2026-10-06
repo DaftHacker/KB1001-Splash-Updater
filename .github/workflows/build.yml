@@ -1,0 +1,94 @@
+name: Package KB1001 Splash Updater
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'kb1001_splash_updater.py'
+      - 'kb1001-splash'
+      - 'kb1001-splash.cmd'
+      - 'requirements.txt'
+      - 'README.md'
+      - '.github/workflows/build.yml'
+  pull_request:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kb1001-splash-updater-build
+  cancel-in-progress: true
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate updater
+        shell: bash
+        run: |
+          python -m py_compile kb1001_splash_updater.py
+          sh -n kb1001-splash
+          python kb1001_splash_updater.py --help >/dev/null
+
+      - name: Build portable bundle
+        shell: bash
+        run: |
+          VERSION="dev.${GITHUB_RUN_NUMBER}"
+          NAME="KB1001-Splash-Updater-${VERSION}"
+          mkdir -p "dist/${NAME}/base" "dist/${NAME}/tools/windows" "dist/${NAME}/tools/linux"
+
+          cp README.md requirements.txt kb1001_splash_updater.py kb1001-splash kb1001-splash.cmd "dist/${NAME}/"
+          cp base/.gitkeep "dist/${NAME}/base/" 2>/dev/null || true
+          cp tools/windows/.gitkeep "dist/${NAME}/tools/windows/" 2>/dev/null || true
+          cp tools/linux/.gitkeep "dist/${NAME}/tools/linux/" 2>/dev/null || true
+          chmod 0755 "dist/${NAME}/kb1001-splash"
+
+          (cd dist && zip -r "${NAME}.zip" "${NAME}" >/dev/null)
+          sha256sum "dist/${NAME}.zip" > "dist/${NAME}.zip.sha256"
+
+          echo "NAME=${NAME}" >> "$GITHUB_ENV"
+          echo "ASSET=dist/${NAME}.zip" >> "$GITHUB_ENV"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kb1001-splash-updater
+          path: |
+            ${{ env.ASSET }}
+            ${{ env.ASSET }}.sha256
+
+      - name: Publish rolling bundle
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          NOTES="Rolling KB1001 Splash Updater bundle for the verified Allwinner A333 / sun65iw1p1 tablet."
+
+          if gh release view dev-latest >/dev/null 2>&1; then
+            gh release edit dev-latest --title "KB1001 Splash Updater - Development" --notes "$NOTES"
+          else
+            gh release create dev-latest --title "KB1001 Splash Updater - Development" --notes "$NOTES" --prerelease
+          fi
+
+          gh release upload dev-latest "$ASSET" "$ASSET.sha256" --clobber
+
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo "# KB1001 Splash Updater"
+            echo
+            echo "Portable bundle: \`${NAME}.zip\`"
+            echo
+            echo "Target: **KB1001 / Allwinner A333 / sun65iw1p1**"
+          } >> "$GITHUB_STEP_SUMMARY"
